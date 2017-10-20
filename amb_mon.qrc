@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/amb_mon">
+        <file>images/scale_ruler.png</file>
+    </qresource>
+</RCC>
