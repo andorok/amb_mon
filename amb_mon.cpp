@@ -3,8 +3,6 @@
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QMenu>
 
-#include <process.h> 
-
 #include "brd.h"
 #include "extn.h"
 #include "ctrlsysmon.h"
@@ -54,9 +52,8 @@ amb_mon::amb_mon(QWidget *parent)
 	S32		status;
 	BRD_displayMode(BRDdm_VISIBLE);
 	int NumDev;
-	status = BRD_init(_BRDC("brd.ini"), &NumDev); // инициализируем устройства
-//	status = BRD_initEx(BRDinit_FILE | BRDinit_AUTOINIT, "brd.ini", NULL, &NumDev);
-	if(!NumDev)
+    status = BRD_init(_BRDC("brd.ini"), &NumDev); // инициализируем устройства
+    if(!NumDev)
 	{
 		labelBrdInfo->setText("<b><font color=red>Devices not found!</font></b>");
 		return;
@@ -438,25 +435,25 @@ void amb_mon::DisplayVoltTable()
 		{
 		case 0:
 			if(g_fVCCintNominal)
-				err = abs(g_sysmon.curVCCint - g_fVCCintNominal) / g_fVCCintNominal * 100.;
+                err = fabs(g_sysmon.curVCCint - g_fVCCintNominal) / g_fVCCintNominal * 100.;
 			else
 				fl_disp = 0;
 			break;
 		case 1:
 			if(g_fVCCauxNominal)
-				err = abs(g_sysmon.curVCCaux - g_fVCCauxNominal) / g_fVCCauxNominal * 100.;
+                err = fabs(g_sysmon.curVCCaux - g_fVCCauxNominal) / g_fVCCauxNominal * 100.;
 			else
 				fl_disp = 0;
 			break;
 		case 2:
 			if(g_fVrefpNominal)
-				err = abs(g_sysmon.Vrefp - g_fVrefpNominal) / g_fVrefpNominal * 100.;
+                err = fabs(g_sysmon.Vrefp - g_fVrefpNominal) / g_fVrefpNominal * 100.;
 			else
 				fl_disp = 0;
 			break;
 		case 3:
 			if(g_fVrefnNominal)
-				err = abs(g_sysmon.Vrefn - g_fVrefnNominal) / g_fVrefnNominal * 100.;
+                err = fabs(g_sysmon.Vrefn - g_fVrefnNominal) / g_fVrefnNominal * 100.;
 			else
 				fl_disp = 0;
 			break;
@@ -532,7 +529,7 @@ void amb_mon::getValPowMon()
 	sval.chip = 0;
 	status = BRD_extension(g_hDevice, 0, BRDextn_SENSORS, &sval);
 	if (!BRD_errcmp(status, BRDerr_OK))
-		BRDC_printf(_BRDC(" Error by reading chip0 INA219  \n"), sval.voltage, sval.current, sval.power);
+        BRDC_printf(_BRDC(" Error by reading chip0 INA219  \n"));
 
 	g_val3.volt = sval.voltage;
 	g_val3.cur = sval.current;
@@ -541,7 +538,7 @@ void amb_mon::getValPowMon()
 	sval.chip = 1;
 	status = BRD_extension(g_hDevice, 0, BRDextn_SENSORS, &sval);
 	if (!BRD_errcmp(status, BRDerr_OK))
-		BRDC_printf(_BRDC(" Error by reading chip1 INA219  \n\n"), sval.voltage, sval.current, sval.power);
+        BRDC_printf(_BRDC(" Error by reading chip1 INA219  \n\n"));
 
 	g_val12.volt = sval.voltage;
 	g_val12.cur = sval.current;
@@ -551,7 +548,6 @@ void amb_mon::getValPowMon()
 
 void amb_mon::DisplayPowTable()
 {
-	REAL64 err;
 	QStringList RowHeaderLabels = (QStringList() << "+3.3V" << "+12V");
 	pow_table->setVerticalHeaderLabels(RowHeaderLabels);
 	QStringList ColHeaderLabels = (QStringList() << "Voltage (V)" << "Current (A)" << "Power (W)");
