@@ -1,4 +1,4 @@
-#include "amb_mon.h"
+#include "fmc132p_mon.h"
 //#include <QTextCodec>
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QMenu>
@@ -22,14 +22,14 @@ typedef struct _SYSMON_PARAM
 	REAL64	Vrefn;			// Внешнее опорное напряжение  (минус)
 } SYSMON_PARAM, *PSYSMON_PARAM;
 
-SYSMON_PARAM g_sysmon;
-U32 g_smonStatus; 
+static SYSMON_PARAM g_sysmon;
+static U32 g_smonStatus;
 
 
-REAL64 g_fVCCintNominal = 0.0;	// Номинал питания ядра
-REAL64 g_fVCCauxNominal = 0.0;	// Номинал питания ПЛИС
-REAL64 g_fVrefpNominal = 0.0;	// Номинал внешнего опорного напряжения (плюс)
-REAL64 g_fVrefnNominal = 0.0;	// Номинал внешнего опорного напряжения (минус)
+static REAL64 g_fVCCintNominal = 0.0;	// Номинал питания ядра
+static REAL64 g_fVCCauxNominal = 0.0;	// Номинал питания ПЛИС
+//REAL64 g_fVrefpNominal = 0.0;	// Номинал внешнего опорного напряжения (плюс)
+//REAL64 g_fVrefnNominal = 0.0;	// Номинал внешнего опорного напряжения (минус)
 
 static BRD_Handle g_hDevice;
 static BRD_Handle g_hSysMon;
@@ -41,14 +41,21 @@ typedef struct _INA219MON_PARAM
 	REAL64	pow;		// Минимальное напряжение мощности питания
 } INA219MON_PARAM, *PINA219MON_PARAM;
 
-INA219MON_PARAM g_val3;
-INA219MON_PARAM g_val12;
+static INA219MON_PARAM g_val12;
 
-QString g_brdInfo;
+static REAL64 g_voltage[8];
+static REAL64 g_temp;
+static REAL64 g_vcc;
+bool g_pwm_en;
+bool g_pwm_inv;
+int g_pwm_threshold;
 
-U16 g_devid;
 
-amb_mon::amb_mon(QWidget *parent)
+static QString g_brdInfo;
+
+static U16 g_devid;
+
+fmc132p_mon::fmc132p_mon(QWidget *parent)
 	: QDialog(parent)
 {
 	//QTextCodec::setCodecForCStrings(QTextCodec::codecForName("CP1251"));
@@ -62,10 +69,9 @@ amb_mon::amb_mon(QWidget *parent)
 	{
 		QMessageBox::critical( 0, "Server Error", "Unable to start the server:" + tcpServer->errorString() );
 		tcpServer->close();
-		//return;
+		return;
 	}
-	else
-		connect( tcpServer, SIGNAL(newConnection()), this, SLOT(slotNewConnection()) );
+	connect( tcpServer, SIGNAL(newConnection()), this, SLOT(slotNewConnection()) );
 	//*******************************
 
 	//quint16 port = tcpServer->serverPort();
@@ -152,53 +158,26 @@ amb_mon::amb_mon(QWidget *parent)
 	BRD_ctrl(g_hSysMon, 0, BRDctrl_SYSMON_GETVNOMINALS, &voltNominals);
 	g_fVCCintNominal = voltNominals.vccint;
 	g_fVCCauxNominal = voltNominals.vccaux;
-	g_fVrefpNominal = voltNominals.vrefp;
-	g_fVrefnNominal = voltNominals.vrefn;
+	//g_fVrefpNominal = voltNominals.vrefp;
+	//g_fVrefnNominal = voltNominals.vrefn;
 
-/*	if (g_devid == 0x5523) //FMC132P
-	{
-		pow_table->setRowCount(1);
-		//pow_table->resizeRowsToContents();
-		QSize pow_size = pow_table->size();
-		pow_size.setHeight(pow_size.height() - 25);
-		pow_table->setFixedSize(pow_size);
-	}
-	else
-	{
-		//volt_132_table->setVisible(false);
-		//volt_132_table->hide();
-	}
-	*/
+	g_pwm_en = false;
+	g_pwm_inv = false;
+	g_pwm_threshold = 0;
+
 	getValSysMon();
 	DisplayVoltTable();
 
-	getValPowMon();
-	DisplayPowTable();
+	getValSensMon();
+	DisplayIna219Table();
+	DisplayLtc2991Table();
 
 	smonTimer = startTimer(1000);
 
 	labelCurTemp->setToolTip("Текущая температура кристалла");
 	labelMinTemp->setToolTip("Минимальная температура кристалла");
 	labelMaxTemp->setToolTip("Максимальная температура кристалла");
-//	labelCurVCCint->setToolTip("Текущее напряжение питания ядра");
-//	labelMinVCCint->setToolTip("Минимальное напряжение питания ядра");
-//	labelMaxVCCint->setToolTip("Максимальное напряжение питания ядра");
-//	labelCurVCCaux->setToolTip("Текущее напряжение питания ПЛИС");
-//	labelMinVCCaux->setToolTip("Минимальное напряжение питания ПЛИС");
-//	labelMaxVCCaux->setToolTip("Максимальное напряжение питания ПЛИС");
-//	labelVRefp->setToolTip("Внешнее опорное напряжение (плюс)");
-//	labelVRefn->setToolTip("Внешнее опорное напряжение (минус)");
-	//labelCurTemp->setToolTip("Current temperature of PLD chip");
-	//labelMinTemp->setToolTip(tr("Minimum temperature of PLD chip"));
-	//labelMaxTemp->setToolTip(tr("Maximum temperature of PLD chip"));
-	//labelCurVCCint->setToolTip(tr("Current voltage of PLD core"));
-	//labelMinVCCint->setToolTip(tr("Minimum voltage of PLD core"));
-	//labelMaxVCCint->setToolTip(tr("Maximum voltage of PLD core"));
-	//labelCurVCCaux->setToolTip(tr("Current voltage of PLD chip"));
-	//labelMinVCCaux->setToolTip(tr("Minimum voltage of PLD chip"));
-	//labelMaxVCCaux->setToolTip(tr("Maximum voltage of PLD chip"));
-	//labelVRefp->setToolTip(tr("External reference voltage (plus)"));
-	//labelVRefn->setToolTip(tr("External reference voltage (minus)"));
+
 	// реализация сворачивания в Tray
 	minimizeAction = new QAction(tr("Mi&nimize"), this);
     connect(minimizeAction, SIGNAL(triggered()), this, SLOT(hide()));
@@ -207,6 +186,7 @@ amb_mon::amb_mon(QWidget *parent)
     quitAction = new QAction(tr("&Quit"), this);
     connect(quitAction, SIGNAL(triggered()), qApp, SLOT(quit()));
 
+	// создаем контекстное меню для Tray
 	trayIconMenu = new QMenu(this);
     trayIconMenu->addAction(minimizeAction);
     trayIconMenu->addAction(restoreAction);
@@ -214,12 +194,12 @@ amb_mon::amb_mon(QWidget *parent)
     trayIconMenu->addAction(quitAction);
 
     trayIcon = new QSystemTrayIcon(this);
-    trayIcon->setContextMenu(trayIconMenu);
+    trayIcon->setContextMenu(trayIconMenu); //  Устанавливаем контекстное меню на иконку Tray
 
-    //QIcon icon = QIcon(":/amb_mon/images/pinion-icon.png");
-    //QIcon icon = QIcon(":/amb_mon/images/weather256.png");
+    //QIcon icon = QIcon(":/fmc132p_mon/images/pinion-icon.png");
+    //QIcon icon = QIcon(":/fmc132p_mon/images/weather256.png");
 	QIcon icon = QIcon(":/amb_mon/images/scale_ruler.png");
-	trayIcon->setIcon(icon);
+	trayIcon->setIcon(icon); // устанавливаем иконку Tray
     setWindowIcon(icon);
 	QString strTray;
 	//strTray.sprintf("%.3fC (%.3fC-%.3fC)|%.3fV (%.3fV-%.3fV)|%.3fV (%.3fV-%.3fV)|%.3fV|%.3fV", 
@@ -231,19 +211,20 @@ amb_mon::amb_mon(QWidget *parent)
 			g_sysmon.curTemp,
 			g_sysmon.curVCCint,
 			g_sysmon.curVCCaux);
-	trayIcon->setToolTip(strTray);
+	trayIcon->setToolTip(strTray); // задаем всплывающую подсказку для Tray 
     //trayIcon->setToolTip(tr("System Monitor"));
 
-	//connect(trayIcon, SIGNAL(messageClicked()), this, SLOT(messageClicked()));
+	// подключаем сигнал нажатия на иконку к обработчику данного нажатия
     connect(trayIcon, SIGNAL(activated(QSystemTrayIcon::ActivationReason)),
             this, SLOT(iconActivated(QSystemTrayIcon::ActivationReason)));
 
 	minimizeAction->setEnabled(true);
 	restoreAction->setEnabled(false);
-	trayIcon->show();
+	trayIcon->show(); // показываем иконку приложения в Tray
+
 }
 
-void amb_mon::setVisible(bool visible)
+void fmc132p_mon::setVisible(bool visible)
 {
 	if(g_hSysMon)
 	{
@@ -256,14 +237,14 @@ void amb_mon::setVisible(bool visible)
 // Виртуальная функция родительского класса,
 // в нашем классе переопределяется для изменения поведения приложения,
 // чтобы оно сворачивалось в трей, когда мы этого хотим
-void amb_mon::closeEvent(QCloseEvent * event)
+void fmc132p_mon::closeEvent(QCloseEvent * event)
 {
 	/* Если окно видимо и чекбокс отмечен, то завершение приложения
 	* игнорируется, а окно просто скрывается, что сопровождается
 	* соответствующим всплывающим сообщением
 	*/
 	if (this->isVisible() && trayCheckBox->isChecked()) {
-		//	if (this->isVisible()) {
+//	if (this->isVisible()) {
 		event->ignore();
 		this->hide();
 		QSystemTrayIcon::MessageIcon icon = QSystemTrayIcon::MessageIcon(QSystemTrayIcon::Information);
@@ -277,7 +258,7 @@ void amb_mon::closeEvent(QCloseEvent * event)
 }
 
 // Слот, который будет принимать сигнал от события нажатия на иконку приложения в трее
-void amb_mon::iconActivated(QSystemTrayIcon::ActivationReason reason)
+void fmc132p_mon::iconActivated(QSystemTrayIcon::ActivationReason reason)
 {
     switch (reason) {
     case QSystemTrayIcon::Trigger:
@@ -294,7 +275,7 @@ void amb_mon::iconActivated(QSystemTrayIcon::ActivationReason reason)
     }
 }
 
-void amb_mon::showMessage()
+void fmc132p_mon::showMessage()
 {
     //QSystemTrayIcon::MessageIcon icon = QSystemTrayIcon::MessageIcon(0);
     //QIcon icon = QIcon(":/images/heart.svg"), tr("Heart");
@@ -302,7 +283,7 @@ void amb_mon::showMessage()
     //trayIcon->showMessage("Systray", "Register Tester");
 }
 
-amb_mon::~amb_mon()
+fmc132p_mon::~fmc132p_mon()
 {
 	S32	status;
 
@@ -317,15 +298,16 @@ amb_mon::~amb_mon()
 	status = BRD_cleanup();
 }
 
-void amb_mon::timerEvent(QTimerEvent *event)
+void fmc132p_mon::timerEvent(QTimerEvent *event)
 {
 	if(event->timerId() == smonTimer)
 	{
 		getValSysMon();
 		DisplayVoltTable();
 
-		getValPowMon();
-		DisplayPowTable();
+		getValSensMon();
+		DisplayIna219Table();
+		DisplayLtc2991Table();
 
 		QString strTray;
 		//strTray.sprintf("%.3fC (%.3fC-%.3fC)|%.3fV (%.3fV-%.3fV)|%.3fV (%.3fV-%.3fV)|%.3fV|%.3fV", 
@@ -343,7 +325,7 @@ void amb_mon::timerEvent(QTimerEvent *event)
 		QWidget::timerEvent(event);
 }
 
-void amb_mon::getValSysMon()
+void fmc132p_mon::getValSysMon()
 {
 	QString strInfo; 
 	BRD_SysMonVal sysmon_data;
@@ -445,7 +427,7 @@ void amb_mon::getValSysMon()
 	}
 }
 
-void amb_mon::DisplayVoltTable()
+void fmc132p_mon::DisplayVoltTable()
 {
 	REAL64 err;
     //volt_table->setColumnCount(5);
@@ -454,7 +436,8 @@ void amb_mon::DisplayVoltTable()
 //	volt_table->setColumnWidth(1, 50);
 //	volt_table->setColumnWidth(2, 50);
 //	volt_table->setColumnWidth(3, 50);
-	QStringList RowHeaderLabels = (QStringList() << "VCCint" << "VCCaux" << "Vrefp" << "Vrefn");
+//	QStringList RowHeaderLabels = (QStringList() << "VCCint" << "VCCaux" << "Vrefp" << "Vrefn");
+	QStringList RowHeaderLabels = (QStringList() << "VCCint" << "VCCaux");
 	volt_table->setVerticalHeaderLabels(RowHeaderLabels);
 	QStringList ColHeaderLabels = (QStringList() << "Current, V" << "Error, %" << "Nominal, V" << "Maximum, V" << "Minimum, V");
 	volt_table->setHorizontalHeaderLabels(ColHeaderLabels);
@@ -464,27 +447,17 @@ void amb_mon::DisplayVoltTable()
 	QTableWidgetItem *numItem[4*4];
 	QBrush itemBrushGreen(Qt::darkGreen);
 	QBrush itemBrushRed(Qt::red);
-	for(int iRow = 0; iRow < 4; iRow++)
+	for(int iRow = 0; iRow < 2; iRow++)
 	{
 		//volt_table->insertRow(iRow);
 		//volt_table->setRowHeight(iRow, 20);
 
 		// current 
-		switch(iRow)
-		{
-		case 0:
-			sprintf(buf, "%.3f", g_sysmon.curVCCint);
-			break;
-		case 1:
+		if(iRow)
 			sprintf(buf, "%.3f", g_sysmon.curVCCaux);
-			break;
-		case 2:
-			sprintf(buf, "%.3f", g_sysmon.Vrefp);
-			break;
-		case 3:
-			sprintf(buf, "%.3f", g_sysmon.Vrefn);
-			break;
-		}
+		else
+			sprintf(buf, "%.3f", g_sysmon.curVCCint);
+
 		numItem[j] = new QTableWidgetItem(buf);
 		QFont itemFont = numItem[j]->font();
 		itemFont.setBold(1);
@@ -512,18 +485,6 @@ void amb_mon::DisplayVoltTable()
 			else
 				fl_disp = 0;
 			break;
-		case 2:
-			if(g_fVrefpNominal)
-                err = fabs(g_sysmon.Vrefp - g_fVrefpNominal) / g_fVrefpNominal * 100.;
-			else
-				fl_disp = 0;
-			break;
-		case 3:
-			if(g_fVrefnNominal)
-                err = fabs(g_sysmon.Vrefn - g_fVrefnNominal) / g_fVrefnNominal * 100.;
-			else
-				fl_disp = 0;
-			break;
 		}
 		if(fl_disp)
 		{
@@ -537,84 +498,72 @@ void amb_mon::DisplayVoltTable()
 		}
 
 		// nominal
-		switch(iRow)
-		{
-		case 0:
-			sprintf(buf, "%.3f", g_fVCCintNominal);
-			break;
-		case 1:
+		if(iRow)
 			sprintf(buf, "%.3f", g_fVCCauxNominal);
-			break;
-		case 2:
-			sprintf(buf, "%.3f", g_fVrefpNominal);
-			break;
-		case 3:
-			sprintf(buf, "%.3f", g_fVrefnNominal);
-			break;
-		}
+		else
+			sprintf(buf, "%.3f", g_fVCCintNominal);
+
 		numItem[j] = new QTableWidgetItem(buf);
 		numItem[j]->setFont(itemFont);
 		numItem[j]->setTextAlignment(Qt::AlignCenter);
 		volt_table->setItem(iRow, 2, numItem[j++]);
 
 		// max 
-		if(iRow == 0)
-			sprintf(buf, "%.3f", g_sysmon.maxVCCint);
-		else
+		if(iRow)
 			sprintf(buf, "%.3f", g_sysmon.maxVCCaux);
-		if(iRow == 0 || iRow == 1)
-		{
-			numItem[j] = new QTableWidgetItem(buf);
-			numItem[j]->setFont(itemFont);
-			numItem[j]->setTextAlignment(Qt::AlignCenter);
-			volt_table->setItem(iRow, 3, numItem[j++]);
-		}
+		else
+			sprintf(buf, "%.3f", g_sysmon.maxVCCint);
+
+		numItem[j] = new QTableWidgetItem(buf);
+		numItem[j]->setFont(itemFont);
+		numItem[j]->setTextAlignment(Qt::AlignCenter);
+		volt_table->setItem(iRow, 3, numItem[j++]);
 
 		// min
-		if(iRow == 0)
-			sprintf(buf, "%.3f", g_sysmon.minVCCint);
-		else
+		if(iRow)
 			sprintf(buf, "%.3f", g_sysmon.minVCCaux);
-		if(iRow == 0 || iRow == 1)
-		{
-			numItem[j] = new QTableWidgetItem(buf);
-			numItem[j]->setFont(itemFont);
-			numItem[j]->setTextAlignment(Qt::AlignCenter);
-			volt_table->setItem(iRow, 4, numItem[j++]);
-		}
+		else
+			sprintf(buf, "%.3f", g_sysmon.minVCCint);
+
+		numItem[j] = new QTableWidgetItem(buf);
+		numItem[j]->setFont(itemFont);
+		numItem[j]->setTextAlignment(Qt::AlignCenter);
+		volt_table->setItem(iRow, 4, numItem[j++]);
 
 	}
 }
 
-void amb_mon::getValPowMon()
+void fmc132p_mon::getValSensMon()
 {
 	S32 status;
 	QString strInfo;
 
-	BRDextn_Sensors sval;
+	BRDextn_Fmc132PSensors mon_val;
 
-	sval.chip = 0;
-	status = BRD_extension(g_hDevice, 0, BRDextn_SENSORS, &sval);
+	mon_val.pwmEnbl = g_pwm_en;
+	mon_val.pwmInv = g_pwm_inv;
+	mon_val.pwmThres = g_pwm_threshold;
+		
+	mon_val.mode = 0;
+	status = BRD_extension(g_hDevice, 0, BRDextn_SENSORS, &mon_val);
 	if (!BRD_errcmp(status, BRDerr_OK))
-		BRDC_printf(_BRDC(" Error by reading chip0 INA219  \n"));
+		BRDC_printf(_BRDC(" Error by reading chip INA219 or LTC2991 \n\n"));
 
-	g_val3.volt = sval.voltage;
-	g_val3.cur = sval.current;
-	g_val3.pow = sval.power;
+	g_val12.volt = mon_val.voltage;
+	g_val12.cur = mon_val.current;
+	g_val12.pow = mon_val.power;
 
-	sval.chip = 1;
-	status = BRD_extension(g_hDevice, 0, BRDextn_SENSORS, &sval);
-	if (!BRD_errcmp(status, BRDerr_OK))
-		BRDC_printf(_BRDC(" Error by reading chip1 INA219  \n\n"));
+	for(int i = 0; i < 8; i++)
+		g_voltage[i] = mon_val.inpv[i];
 
-	g_val12.volt = sval.voltage;
-	g_val12.cur = sval.current;
-	g_val12.pow = sval.power;
+	g_temp = mon_val.tint;
+	g_vcc = mon_val.vcc;
+
 }
 
-void amb_mon::DisplayPowTable()
+void fmc132p_mon::DisplayIna219Table()
 {
-	QStringList RowHeaderLabels = (QStringList() << "+3.3V" << "+12V");
+	QStringList RowHeaderLabels = (QStringList() << "+12V");
 	pow_table->setVerticalHeaderLabels(RowHeaderLabels);
 	QStringList ColHeaderLabels = (QStringList() << "Voltage (V)" << "Current (A)" << "Power (W)");
 	pow_table->setHorizontalHeaderLabels(ColHeaderLabels);
@@ -624,66 +573,81 @@ void amb_mon::DisplayPowTable()
 	QTableWidgetItem *numItem[4 * 4];
 	QBrush itemBrushGreen(Qt::darkGreen);
 	QBrush itemBrushRed(Qt::red);
-	for (int iRow = 0; iRow < 2; iRow++)
-	{
-		// voltage
-		switch (iRow)
-		{
-		case 0:
-			sprintf(buf, "%.3f", g_val3.volt);
-			break;
-		case 1:
-			sprintf(buf, "%.3f", g_val12.volt);
-			break;
-		}
-		numItem[j] = new QTableWidgetItem(buf);
-		QFont itemFont = numItem[j]->font();
-		itemFont.setBold(1);
-		numItem[j]->setFont(itemFont);
-		//numItem[j]->setForeground(itemBrushGreen);
-		numItem[j]->setTextAlignment(Qt::AlignCenter);
-		pow_table->setItem(iRow, 0, numItem[j++]);
 
-		// current 
-		switch (iRow)
-		{
-		case 0:
-			sprintf(buf, "%.3f", g_val3.cur);
-			break;
-		case 1:
-			sprintf(buf, "%.3f", g_val12.cur);
-			break;
-		}
-		numItem[j] = new QTableWidgetItem(buf);
-		itemFont = numItem[j]->font();
-		itemFont.setBold(1);
-		numItem[j]->setFont(itemFont);
-		//numItem[j]->setForeground(itemBrushGreen);
-		numItem[j]->setTextAlignment(Qt::AlignCenter);
-		pow_table->setItem(iRow, 1, numItem[j++]);
+	// voltage
+	sprintf(buf, "%.3f", g_val12.volt);
+	numItem[j] = new QTableWidgetItem(buf);
+	QFont itemFont = numItem[j]->font();
+	itemFont.setBold(1);
+	numItem[j]->setFont(itemFont);
+	//numItem[j]->setForeground(itemBrushGreen);
+	numItem[j]->setTextAlignment(Qt::AlignCenter);
+	pow_table->setItem(0, 0, numItem[j++]);
 
-		// power
-		switch (iRow)
-		{
-		case 0:
-			sprintf(buf, "%.3f", g_val3.pow);
-			break;
-		case 1:
-			sprintf(buf, "%.3f", g_val12.pow);
-			break;
-		}
-		numItem[j] = new QTableWidgetItem(buf);
-		itemFont = numItem[j]->font();
-		itemFont.setBold(1);
-		numItem[j]->setFont(itemFont);
-		//numItem[j]->setForeground(itemBrushGreen);
-		numItem[j]->setTextAlignment(Qt::AlignCenter);
-		pow_table->setItem(iRow, 2, numItem[j++]);
+	// current 
+	sprintf(buf, "%.3f", g_val12.cur);
+	numItem[j] = new QTableWidgetItem(buf);
+	itemFont = numItem[j]->font();
+	itemFont.setBold(1);
+	numItem[j]->setFont(itemFont);
+	//numItem[j]->setForeground(itemBrushGreen);
+	numItem[j]->setTextAlignment(Qt::AlignCenter);
+	pow_table->setItem(0, 1, numItem[j++]);
 
-	}
+	// power
+	sprintf(buf, "%.3f", g_val12.pow);
+	numItem[j] = new QTableWidgetItem(buf);
+	itemFont = numItem[j]->font();
+	itemFont.setBold(1);
+	numItem[j]->setFont(itemFont);
+	//numItem[j]->setForeground(itemBrushGreen);
+	numItem[j]->setTextAlignment(Qt::AlignCenter);
+	pow_table->setItem(0, 2, numItem[j++]);
 }
 
-/*virtual*/ void amb_mon::slotNewConnection()
+//if (BRD_errcmp(status, BRDerr_OK))
+//{
+//	BRDC_printf(_BRDC(" 12V - %4.3f Volt     %4.3f A     %4.3f Vatt     \n"), mon_val.voltage, mon_val.current, mon_val.power);
+//	BRDC_printf(_BRDC(" VIO_B_M2C - %4.3f Volt     VADJ - %4.3f Volt     3.3V_FMC - %4.3f Volt    1V_AVCC - %4.3f Volt \n"), mon_val.inpv[0], mon_val.inpv[1], mon_val.inpv[2], mon_val.inpv[3]);
+//	BRDC_printf(_BRDC(" 1.2V_AVTT - %4.3f Volt     0.9V - %4.3f Volt     1.2V - %4.3f Volt   2.5V - %4.3f Volt \n"), mon_val.inpv[4], mon_val.inpv[5], mon_val.inpv[6], mon_val.inpv[7]);
+//	BRDC_printf(_BRDC(" Chip Temperature: %7.3f C,    Vcc - %4.3f Volt\n"), mon_val.tint, mon_val.vcc);
+//	BRDC_printf(_BRDC(" \n"));
+//}
+//else
+//	BRDC_printf(_BRDC(" Error by reading chip0 INA219  \n"));
+void fmc132p_mon::DisplayLtc2991Table()
+{
+	QStringList ColHeaderLabels = (QStringList() << "VIO_B_M2C" << "VADJ" << "3.3V_FMC" << "1V_AVCC" << "1.2V_AVTT" << "0.9V" << "1.2V" << "2.5V");
+	//QStringList ColHeaderLabels = (QStringList() << "VIO" << "VADJ" << "3.3V" << "1V_" << "1.2V_" << "0.9V" << "1.2V" << "2.5V");
+	volt_132_table->setHorizontalHeaderLabels(ColHeaderLabels);
+
+	char buf[64];
+	//int j = 0;
+	QTableWidgetItem *numItem[8];
+	QBrush itemBrushGreen(Qt::darkGreen);
+	QBrush itemBrushRed(Qt::red);
+
+	for (int iCol = 0; iCol < 8; iCol++)
+	{
+		sprintf(buf, "%.3f", g_voltage[iCol]);
+		numItem[iCol] = new QTableWidgetItem(buf);
+		QFont itemFont = numItem[iCol]->font();
+		itemFont.setBold(1);
+		numItem[iCol]->setFont(itemFont);
+		//numItem[j]->setForeground(itemBrushGreen);
+		numItem[iCol]->setTextAlignment(Qt::AlignCenter);
+		volt_132_table->setItem(0, iCol, numItem[iCol]);
+	}
+
+	QString strInfo;
+	strInfo.sprintf("Tint: <b>%.3f °C</b>", g_temp);
+	labelIntTemp->setText(strInfo);
+
+	strInfo.sprintf("Vcc: <b>%.3f V</b>", g_vcc);
+	labelVcc->setText(strInfo);
+}
+
+/*virtual*/ void fmc132p_mon::slotNewConnection()
 {
 	QTcpSocket* pClientSocket = tcpServer->nextPendingConnection();
 	connect(pClientSocket, SIGNAL(disconnected()),
@@ -710,7 +674,7 @@ void amb_mon::DisplayPowTable()
 }
 
 // ответ на запрос клиента
-void amb_mon::slotReadClient()
+void fmc132p_mon::slotReadClient()
 {
 	QTcpSocket* pClientSocket = (QTcpSocket*)sender();
 	QDataStream in(pClientSocket);
@@ -736,13 +700,13 @@ void amb_mon::slotReadClient()
 		//m_ptxt->append(strMessage);
 
 		//str.sprintf("%.3f°C | %.3fV | %.3fV", g_sysmon.curTemp, g_sysmon.curVCCint, g_sysmon.curVCCaux);
-		str.sprintf("Temperature: <font color=green>%.2f°C (%.2f°C-%.2f°C)</font>|VCCint: <b>%.3fV (%.3fV-%.3fV)</b>|VCCaux: <b>%.3fV (%.3fV-%.3fV)</b>|Vrefp: <b>%.3fV</b>|Vrefn: <b>%.3fV</b>|"
-			"+3.3V: <b>%.3fV %.3fA %.3fW</b>|+12V: <b>%.3fV %.3fA %.3fW</b>|", 
+		str.sprintf("Temperature: <font color=green>%.2f°C (%.2f°C-%.2f°C)</font>|VCCint: <b>%.3fV (%.3fV-%.3fV)</b>|VCCaux: <b>%.3fV (%.3fV-%.3fV)</b>|"
+			"+12V: <b>%.3fV %.3fA %.3fW</b>|", 
 			g_sysmon.curTemp, g_sysmon.minTemp, g_sysmon.maxTemp,
 			g_sysmon.curVCCint, g_sysmon.minVCCint, g_sysmon.maxVCCint,
 			g_sysmon.curVCCaux, g_sysmon.minVCCaux, g_sysmon.maxVCCaux,
-			g_sysmon.Vrefp, g_sysmon.Vrefn, 
-			g_val3.volt, g_val3.cur, g_val3.pow,
+			//g_sysmon.Vrefp, g_sysmon.Vrefn, 
+			//g_val3.volt, g_val3.cur, g_val3.pow,
 			g_val12.volt, g_val12.cur, g_val12.pow);
 
 		m_nNextBlockSize = 0;
@@ -753,7 +717,7 @@ void amb_mon::slotReadClient()
 	}
 }
 
-void amb_mon::sendToClient(QTcpSocket* pSocket, const QString& str)
+void fmc132p_mon::sendToClient(QTcpSocket* pSocket, const QString& str)
 {
 	QByteArray  arrBlock;
 	QDataStream out(&arrBlock, QIODevice::WriteOnly);
@@ -765,3 +729,19 @@ void amb_mon::sendToClient(QTcpSocket* pSocket, const QString& str)
 
 	pSocket->write(arrBlock);
 }
+
+void fmc132p_mon::ClickedPwmEn()
+{
+	g_pwm_en = checkPwmEn->isChecked();
+}
+
+void fmc132p_mon::ClickedPwmInv()
+{
+	g_pwm_inv = checkPwmInv->isChecked();
+}
+
+void fmc132p_mon::EditPwmThreshold()
+{
+	g_pwm_threshold = spinPwm->value();
+}
+

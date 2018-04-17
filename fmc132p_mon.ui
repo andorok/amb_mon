@@ -1,31 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>amb_monClass</class>
- <widget class="QDialog" name="amb_monClass">
+ <class>fmc132p_monClass</class>
+ <widget class="QDialog" name="fmc132p_monClass">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>525</width>
-    <height>460</height>
+    <width>610</width>
+    <height>510</height>
    </rect>
   </property>
-  <property name="font">
-   <font>
-    <pointsize>10</pointsize>
-   </font>
-  </property>
   <property name="windowTitle">
-   <string>AMB Sensors Monitor</string>
-  </property>
-  <property name="windowIcon">
-   <iconset>
-    <normaloff>scale_ruler.ico</normaloff>scale_ruler.ico</iconset>
+   <string>FMC132P Sensors Monitor</string>
   </property>
   <widget class="QGroupBox" name="groupBoxTemp">
    <property name="geometry">
     <rect>
-     <x>40</x>
+     <x>80</x>
      <y>70</y>
      <width>451</width>
      <height>61</height>
@@ -109,7 +100,7 @@
   <widget class="QLabel" name="labelBrdInfo">
    <property name="geometry">
     <rect>
-     <x>40</x>
+     <x>80</x>
      <y>10</y>
      <width>450</width>
      <height>30</height>
@@ -131,59 +122,10 @@
   <widget class="QTableWidget" name="volt_table">
    <property name="geometry">
     <rect>
-     <x>30</x>
+     <x>70</x>
      <y>150</y>
      <width>461</width>
-     <height>121</height>
-    </rect>
-   </property>
-   <property name="editTriggers">
-    <set>QAbstractItemView::NoEditTriggers</set>
-   </property>
-   <property name="tabKeyNavigation">
-    <bool>false</bool>
-   </property>
-   <property name="showDropIndicator" stdset="0">
-    <bool>false</bool>
-   </property>
-   <property name="dragDropOverwriteMode">
-    <bool>false</bool>
-   </property>
-   <property name="selectionMode">
-    <enum>QAbstractItemView::NoSelection</enum>
-   </property>
-   <property name="gridStyle">
-    <enum>Qt::DotLine</enum>
-   </property>
-   <property name="rowCount">
-    <number>4</number>
-   </property>
-   <property name="columnCount">
-    <number>5</number>
-   </property>
-   <attribute name="horizontalHeaderDefaultSectionSize">
-    <number>80</number>
-   </attribute>
-   <attribute name="verticalHeaderDefaultSectionSize">
-    <number>22</number>
-   </attribute>
-   <row/>
-   <row/>
-   <row/>
-   <row/>
-   <column/>
-   <column/>
-   <column/>
-   <column/>
-   <column/>
-  </widget>
-  <widget class="QTableWidget" name="pow_table">
-   <property name="geometry">
-    <rect>
-     <x>110</x>
-     <y>310</y>
-     <width>291</width>
-     <height>80</height>
+     <height>71</height>
     </rect>
    </property>
    <property name="editTriggers">
@@ -208,7 +150,7 @@
     <number>2</number>
    </property>
    <property name="columnCount">
-    <number>3</number>
+    <number>5</number>
    </property>
    <attribute name="horizontalHeaderDefaultSectionSize">
     <number>80</number>
@@ -221,14 +163,60 @@
    <column/>
    <column/>
    <column/>
+   <column/>
+   <column/>
+  </widget>
+  <widget class="QTableWidget" name="pow_table">
+   <property name="geometry">
+    <rect>
+     <x>150</x>
+     <y>250</y>
+     <width>291</width>
+     <height>51</height>
+    </rect>
+   </property>
+   <property name="editTriggers">
+    <set>QAbstractItemView::NoEditTriggers</set>
+   </property>
+   <property name="tabKeyNavigation">
+    <bool>false</bool>
+   </property>
+   <property name="showDropIndicator" stdset="0">
+    <bool>false</bool>
+   </property>
+   <property name="dragDropOverwriteMode">
+    <bool>false</bool>
+   </property>
+   <property name="selectionMode">
+    <enum>QAbstractItemView::NoSelection</enum>
+   </property>
+   <property name="gridStyle">
+    <enum>Qt::DotLine</enum>
+   </property>
+   <property name="rowCount">
+    <number>1</number>
+   </property>
+   <property name="columnCount">
+    <number>3</number>
+   </property>
+   <attribute name="horizontalHeaderDefaultSectionSize">
+    <number>80</number>
+   </attribute>
+   <attribute name="verticalHeaderDefaultSectionSize">
+    <number>22</number>
+   </attribute>
+   <row/>
+   <column/>
+   <column/>
+   <column/>
   </widget>
   <widget class="QGroupBox" name="groupBoxSysMon">
    <property name="geometry">
     <rect>
-     <x>20</x>
+     <x>60</x>
      <y>50</y>
      <width>481</width>
-     <height>231</height>
+     <height>181</height>
     </rect>
    </property>
    <property name="font">
@@ -254,10 +242,10 @@
   <widget class="QGroupBox" name="groupBoxIna219">
    <property name="geometry">
     <rect>
-     <x>90</x>
-     <y>290</y>
-     <width>330</width>
-     <height>110</height>
+     <x>140</x>
+     <y>230</y>
+     <width>311</width>
+     <height>81</height>
     </rect>
    </property>
    <property name="font">
@@ -274,24 +262,213 @@
    </property>
    <layout class="QHBoxLayout" name="horizontalLayout_4"/>
   </widget>
-  <widget class="QCheckBox" name="trayCheckBox">
+  <widget class="QGroupBox" name="groupBoxIna2991">
    <property name="geometry">
     <rect>
-     <x>200</x>
-     <y>410</y>
-     <width>111</width>
-     <height>30</height>
+     <x>10</x>
+     <y>320</y>
+     <width>591</width>
+     <height>131</height>
     </rect>
    </property>
    <property name="font">
     <font>
-     <pointsize>8</pointsize>
+     <family>Segoe UI</family>
+     <pointsize>9</pointsize>
     </font>
+   </property>
+   <property name="title">
+    <string>LTC2991</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
+   </property>
+   <widget class="QCheckBox" name="checkPwmEn">
+    <property name="geometry">
+     <rect>
+      <x>260</x>
+      <y>80</y>
+      <width>90</width>
+      <height>19</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>PWM Enable</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="labelVcc">
+    <property name="geometry">
+     <rect>
+      <x>120</x>
+      <y>90</y>
+      <width>91</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="frameShape">
+     <enum>QFrame::Panel</enum>
+    </property>
+    <property name="frameShadow">
+     <enum>QFrame::Sunken</enum>
+    </property>
+    <property name="text">
+     <string>Vcc</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
+    </property>
+    <property name="indent">
+     <number>-1</number>
+    </property>
+   </widget>
+   <widget class="QLabel" name="labelIntTemp">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>90</y>
+      <width>91</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="frameShape">
+     <enum>QFrame::Panel</enum>
+    </property>
+    <property name="frameShadow">
+     <enum>QFrame::Sunken</enum>
+    </property>
+    <property name="text">
+     <string>Temp int</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
+    </property>
+    <property name="indent">
+     <number>-1</number>
+    </property>
+   </widget>
+   <widget class="QTableWidget" name="volt_132_table">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>20</y>
+      <width>570</width>
+      <height>51</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>8</pointsize>
+     </font>
+    </property>
+    <property name="editTriggers">
+     <set>QAbstractItemView::NoEditTriggers</set>
+    </property>
+    <property name="tabKeyNavigation">
+     <bool>false</bool>
+    </property>
+    <property name="showDropIndicator" stdset="0">
+     <bool>false</bool>
+    </property>
+    <property name="dragDropOverwriteMode">
+     <bool>false</bool>
+    </property>
+    <property name="selectionMode">
+     <enum>QAbstractItemView::NoSelection</enum>
+    </property>
+    <property name="showGrid">
+     <bool>true</bool>
+    </property>
+    <property name="gridStyle">
+     <enum>Qt::DotLine</enum>
+    </property>
+    <property name="cornerButtonEnabled">
+     <bool>true</bool>
+    </property>
+    <property name="rowCount">
+     <number>1</number>
+    </property>
+    <property name="columnCount">
+     <number>8</number>
+    </property>
+    <attribute name="horizontalHeaderVisible">
+     <bool>true</bool>
+    </attribute>
+    <attribute name="horizontalHeaderDefaultSectionSize">
+     <number>70</number>
+    </attribute>
+    <attribute name="verticalHeaderVisible">
+     <bool>false</bool>
+    </attribute>
+    <attribute name="verticalHeaderDefaultSectionSize">
+     <number>22</number>
+    </attribute>
+    <row/>
+    <column/>
+    <column/>
+    <column/>
+    <column/>
+    <column/>
+    <column/>
+    <column/>
+    <column/>
+   </widget>
+   <widget class="QCheckBox" name="checkPwmInv">
+    <property name="geometry">
+     <rect>
+      <x>260</x>
+      <y>100</y>
+      <width>90</width>
+      <height>19</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>PWM Invert</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="labelPwm">
+    <property name="geometry">
+     <rect>
+      <x>380</x>
+      <y>90</y>
+      <width>90</width>
+      <height>22</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>PWM Threshold</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
+    </property>
+   </widget>
+   <widget class="QSpinBox" name="spinPwm">
+    <property name="geometry">
+     <rect>
+      <x>480</x>
+      <y>90</y>
+      <width>61</width>
+      <height>24</height>
+     </rect>
+    </property>
+    <property name="maximum">
+     <number>512</number>
+    </property>
+   </widget>
+  </widget>
+  <widget class="QCheckBox" name="trayCheckBox">
+   <property name="geometry">
+    <rect>
+     <x>230</x>
+     <y>460</y>
+     <width>111</width>
+     <height>30</height>
+    </rect>
    </property>
    <property name="text">
     <string>Program to Tray</string>
    </property>
   </widget>
+  <zorder>groupBoxIna2991</zorder>
   <zorder>groupBoxIna219</zorder>
   <zorder>groupBoxSysMon</zorder>
   <zorder>groupBoxTemp</zorder>
@@ -300,7 +477,60 @@
   <zorder>pow_table</zorder>
   <zorder>trayCheckBox</zorder>
  </widget>
- <layoutdefault spacing="6" margin="11"/>
  <resources/>
- <connections/>
+ <connections>
+  <connection>
+   <sender>checkPwmEn</sender>
+   <signal>released()</signal>
+   <receiver>fmc132p_monClass</receiver>
+   <slot>ClickedPwmEn()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>300</x>
+     <y>410</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>304</x>
+     <y>254</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkPwmInv</sender>
+   <signal>released()</signal>
+   <receiver>fmc132p_monClass</receiver>
+   <slot>ClickedPwmInv()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>314</x>
+     <y>429</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>304</x>
+     <y>254</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>spinPwm</sender>
+   <signal>valueChanged(int)</signal>
+   <receiver>fmc132p_monClass</receiver>
+   <slot>EditPwmThreshold()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>520</x>
+     <y>421</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>304</x>
+     <y>254</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+ <slots>
+  <slot>ClickedPwmEn()</slot>
+  <slot>ClickedPwmInv()</slot>
+  <slot>EditPwmThreshold()</slot>
+ </slots>
 </ui>

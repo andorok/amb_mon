@@ -1,5 +1,5 @@
-#ifndef AMB_MON_H
-#define AMB_MON_H
+#ifndef FMC132P_MON_H
+#define FMC132P_MON_H
 
 #include <QSystemTrayIcon>
 #include <QtGui>
@@ -7,15 +7,15 @@
 #include <QtNetwork/QTcpServer> 
 #include <QtNetwork/QTcpSocket> 
 #include <QtNetwork/QNetworkInterface> 
-#include "ui_amb_mon.h"
+#include "ui_fmc132p_mon.h"
 
-class amb_mon : public QDialog, public Ui::amb_monClass
+class fmc132p_mon : public QDialog, public Ui::fmc132p_monClass
 {
 	Q_OBJECT
 
 public:
-	amb_mon(QWidget *parent = 0);
-	~amb_mon();
+	fmc132p_mon(QWidget *parent = 0);
+	~fmc132p_mon();
 	void timerEvent(QTimerEvent *event);
 	void setVisible(bool visible); // for tray
 
@@ -23,12 +23,12 @@ public:
 	void getValSysMon();
 	void DisplayVoltTable();
 
-	void getValPowMon();
-	void DisplayPowTable();
-
+	void getValSensMon();
+	void DisplayIna219Table();
+	void DisplayLtc2991Table();
 	// for tray
 private slots:
-    void iconActivated(QSystemTrayIcon::ActivationReason reason);
+	void iconActivated(QSystemTrayIcon::ActivationReason reason);
     void showMessage();
 
 private:
@@ -47,6 +47,10 @@ private:
 public slots:
 	virtual void slotNewConnection();
 			void slotReadClient();
+			void ClickedPwmEn();
+			void ClickedPwmInv();
+			void EditPwmThreshold();
+
 };
 
-#endif // AMB_MON_H
+#endif // FMC132P_MON_H
