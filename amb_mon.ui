@@ -134,7 +134,7 @@
      <x>30</x>
      <y>150</y>
      <width>461</width>
-     <height>121</height>
+     <height>140</height>
     </rect>
    </property>
    <property name="editTriggers">
@@ -156,7 +156,7 @@
     <enum>Qt::DotLine</enum>
    </property>
    <property name="rowCount">
-    <number>4</number>
+    <number>5</number>
    </property>
    <property name="columnCount">
     <number>5</number>
@@ -171,6 +171,7 @@
    <row/>
    <row/>
    <row/>
+   <row/>
    <column/>
    <column/>
    <column/>
@@ -181,7 +182,7 @@
    <property name="geometry">
     <rect>
      <x>110</x>
-     <y>310</y>
+     <y>320</y>
      <width>291</width>
      <height>80</height>
     </rect>
@@ -255,7 +256,7 @@
    <property name="geometry">
     <rect>
      <x>90</x>
-     <y>290</y>
+     <y>300</y>
      <width>330</width>
      <height>110</height>
     </rect>
@@ -278,7 +279,7 @@
    <property name="geometry">
     <rect>
      <x>200</x>
-     <y>410</y>
+     <y>420</y>
      <width>111</width>
      <height>30</height>
     </rect>

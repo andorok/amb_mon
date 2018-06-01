@@ -18,6 +18,9 @@ typedef struct _SYSMON_PARAM
 	REAL64	curVCCaux;		// Текущее напряжение питания ПЛИС
 	REAL64	minVCCaux;		// Минимальное напряжение питания ПЛИС
 	REAL64	maxVCCaux;		// Максимальное напряжение питания ПЛИС
+	REAL64	curVCCbram;		// Текущее напряжение питания блока RAM
+	REAL64	minVCCbram;		// Минимальное питание блока RAM
+	REAL64	maxVCCbram;		// Максимальное питание блока RAM
 	REAL64	Vrefp;			// Внешнее опорное напряжение (плюс)
 	REAL64	Vrefn;			// Внешнее опорное напряжение  (минус)
 } SYSMON_PARAM, *PSYSMON_PARAM;
@@ -25,11 +28,13 @@ typedef struct _SYSMON_PARAM
 static SYSMON_PARAM g_sysmon;
 static U32 g_smonStatus;
 
-
 static REAL64 g_fVCCintNominal = 0.0;	// Номинал питания ядра
 static REAL64 g_fVCCauxNominal = 0.0;	// Номинал питания ПЛИС
-//REAL64 g_fVrefpNominal = 0.0;	// Номинал внешнего опорного напряжения (плюс)
-//REAL64 g_fVrefnNominal = 0.0;	// Номинал внешнего опорного напряжения (минус)
+static REAL64 g_fVrefpNominal = 0.0;	// Номинал внешнего опорного напряжения (плюс)
+static REAL64 g_fVrefnNominal = 0.0;	// Номинал внешнего опорного напряжения (минус)
+static REAL64 g_fVCCbramNominal = 0.0;	// Номинал питания блока RAM
+
+static U08 g_isVCCbram = 1;	// 0 - нет напряжения питания блока RAM
 
 static BRD_Handle g_hDevice;
 static BRD_Handle g_hSysMon;
@@ -49,7 +54,6 @@ static REAL64 g_vcc;
 bool g_pwm_en;
 bool g_pwm_inv;
 int g_pwm_threshold;
-
 
 static QString g_brdInfo;
 
@@ -130,6 +134,9 @@ fmc132p_mon::fmc132p_mon(QWidget *parent)
 
 	g_hDevice = BRD_open(lidList.pLID[0], BRDopen_SHARED, NULL); // открываем первое устройство
 
+	if (g_devid == 0x5522) // FMC126P
+		this->setWindowTitle("FMC126P Sensors Monitor");
+
 	U32 ItemReal;
 	status = BRD_serviceList(g_hDevice, 0, NULL, 0, &ItemReal);
 	PBRD_ServList pSrvList = new BRD_ServList[ItemReal];
@@ -152,14 +159,27 @@ fmc132p_mon::fmc132p_mon(QWidget *parent)
 	if(!g_hSysMon)
 	{
 		QMessageBox::about(this, "System Monitor", "<font color=red>Service SYSMON not capture!</font>");
-		return;
+		//return;
 	}
-	BRD_VoltNominals voltNominals;
-	BRD_ctrl(g_hSysMon, 0, BRDctrl_SYSMON_GETVNOMINALS, &voltNominals);
+
+	BRD_VoltNominals7s voltNominals;
+	S32	err = BRD_ctrl(g_hSysMon, 0, BRDctrl_SYSMON_GETVN7S, &voltNominals);
+	if (BRD_errcmp(err, BRDerr_OK))
+	{
+		g_fVCCbramNominal = voltNominals.vccbram;
+	}
+	else
+	{
+		BRD_ctrl(g_hSysMon, 0, BRDctrl_SYSMON_GETVNOMINALS, &voltNominals);
+		g_isVCCbram = 0;
+	}
+
+	//BRD_VoltNominals voltNominals;
+	//BRD_ctrl(g_hSysMon, 0, BRDctrl_SYSMON_GETVNOMINALS, &voltNominals);
 	g_fVCCintNominal = voltNominals.vccint;
 	g_fVCCauxNominal = voltNominals.vccaux;
-	//g_fVrefpNominal = voltNominals.vrefp;
-	//g_fVrefnNominal = voltNominals.vrefn;
+	g_fVrefpNominal = voltNominals.vrefp;
+	g_fVrefnNominal = voltNominals.vrefn;
 
 	g_pwm_en = false;
 	g_pwm_inv = false;
@@ -425,6 +445,14 @@ void fmc132p_mon::getValSysMon()
 		/*strInfo.sprintf("Vrefn: <b>%.3f V</b>", val);
 		labelVRefn->setText(strInfo);*/
 	}
+	//Снятие значения Vccint
+	if (g_isVCCbram)
+	{
+		BRD_ctrl(g_hSysMon, 0, BRDctrl_SYSMON_GETVCCBRAM, &sysmon_data);
+		g_sysmon.curVCCbram = sysmon_data.curv;
+		g_sysmon.maxVCCbram = sysmon_data.maxv;
+		g_sysmon.minVCCbram = sysmon_data.minv;
+	}
 }
 
 void fmc132p_mon::DisplayVoltTable()
@@ -436,8 +464,9 @@ void fmc132p_mon::DisplayVoltTable()
 //	volt_table->setColumnWidth(1, 50);
 //	volt_table->setColumnWidth(2, 50);
 //	volt_table->setColumnWidth(3, 50);
-//	QStringList RowHeaderLabels = (QStringList() << "VCCint" << "VCCaux" << "Vrefp" << "Vrefn");
-	QStringList RowHeaderLabels = (QStringList() << "VCCint" << "VCCaux");
+	QStringList RowHeaderLabels = (QStringList() << "VCCint" << "VCCaux" << "Vrefp" << "Vrefn" << "VCCbram");
+	//QStringList RowHeaderLabels = (QStringList() << "VCCint" << "VCCaux" << "Vrefp" << "Vrefn");
+	//QStringList RowHeaderLabels = (QStringList() << "VCCint" << "VCCaux");
 	volt_table->setVerticalHeaderLabels(RowHeaderLabels);
 	QStringList ColHeaderLabels = (QStringList() << "Current, V" << "Error, %" << "Nominal, V" << "Maximum, V" << "Minimum, V");
 	volt_table->setHorizontalHeaderLabels(ColHeaderLabels);
@@ -447,17 +476,33 @@ void fmc132p_mon::DisplayVoltTable()
 	QTableWidgetItem *numItem[4*4];
 	QBrush itemBrushGreen(Qt::darkGreen);
 	QBrush itemBrushRed(Qt::red);
-	for(int iRow = 0; iRow < 2; iRow++)
+	for(int iRow = 0; iRow < 5; iRow++)
 	{
 		//volt_table->insertRow(iRow);
 		//volt_table->setRowHeight(iRow, 20);
 
 		// current 
-		if(iRow)
-			sprintf(buf, "%.3f", g_sysmon.curVCCaux);
-		else
+		switch (iRow)
+		{
+		case 0:
 			sprintf(buf, "%.3f", g_sysmon.curVCCint);
-
+			break;
+		case 1:
+			sprintf(buf, "%.3f", g_sysmon.curVCCaux);
+			break;
+		case 2:
+			sprintf(buf, "%.3f", g_sysmon.Vrefp);
+			break;
+		case 3:
+			sprintf(buf, "%.3f", g_sysmon.Vrefn);
+			break;
+		case 4:
+			if (g_isVCCbram)
+				sprintf(buf, "%.3f", g_sysmon.curVCCbram);
+			else
+				sprintf(buf, "None");
+			break;
+		}
 		numItem[j] = new QTableWidgetItem(buf);
 		QFont itemFont = numItem[j]->font();
 		itemFont.setBold(1);
@@ -471,17 +516,35 @@ void fmc132p_mon::DisplayVoltTable()
 
 		// error
 		int fl_disp = 1;
-		switch(iRow)
+		switch (iRow)
 		{
 		case 0:
-			if(g_fVCCintNominal)
-                err = fabs(g_sysmon.curVCCint - g_fVCCintNominal) / g_fVCCintNominal * 100.;
+			if (g_fVCCintNominal)
+				err = fabs(g_sysmon.curVCCint - g_fVCCintNominal) / g_fVCCintNominal * 100.;
 			else
 				fl_disp = 0;
 			break;
 		case 1:
-			if(g_fVCCauxNominal)
-                err = fabs(g_sysmon.curVCCaux - g_fVCCauxNominal) / g_fVCCauxNominal * 100.;
+			if (g_fVCCauxNominal)
+				err = fabs(g_sysmon.curVCCaux - g_fVCCauxNominal) / g_fVCCauxNominal * 100.;
+			else
+				fl_disp = 0;
+			break;
+		case 2:
+			if (g_fVrefpNominal)
+				err = fabs(g_sysmon.Vrefp - g_fVrefpNominal) / g_fVrefpNominal * 100.;
+			else
+				fl_disp = 0;
+			break;
+		case 3:
+			if (g_fVrefnNominal)
+				err = fabs(g_sysmon.Vrefn - g_fVrefnNominal) / g_fVrefnNominal * 100.;
+			else
+				fl_disp = 0;
+			break;
+		case 4:
+			if (g_isVCCbram && g_fVCCbramNominal)
+				err = fabs(g_sysmon.curVCCint - g_fVCCbramNominal) / g_fVCCbramNominal * 100.;
 			else
 				fl_disp = 0;
 			break;
@@ -498,37 +561,70 @@ void fmc132p_mon::DisplayVoltTable()
 		}
 
 		// nominal
-		if(iRow)
-			sprintf(buf, "%.3f", g_fVCCauxNominal);
-		else
+		switch (iRow)
+		{
+		case 0:
 			sprintf(buf, "%.3f", g_fVCCintNominal);
-
+			break;
+		case 1:
+			sprintf(buf, "%.3f", g_fVCCauxNominal);
+			break;
+		case 2:
+			sprintf(buf, "%.3f", g_fVrefpNominal);
+			break;
+		case 3:
+			sprintf(buf, "%.3f", g_fVrefnNominal);
+			break;
+		case 4:
+			sprintf(buf, "%.3f", g_fVCCbramNominal);
+			break;
+		}
 		numItem[j] = new QTableWidgetItem(buf);
 		numItem[j]->setFont(itemFont);
 		numItem[j]->setTextAlignment(Qt::AlignCenter);
 		volt_table->setItem(iRow, 2, numItem[j++]);
 
 		// max 
-		if(iRow)
-			sprintf(buf, "%.3f", g_sysmon.maxVCCaux);
-		else
+		switch (iRow)
+		{
+		case 0:
 			sprintf(buf, "%.3f", g_sysmon.maxVCCint);
-
-		numItem[j] = new QTableWidgetItem(buf);
-		numItem[j]->setFont(itemFont);
-		numItem[j]->setTextAlignment(Qt::AlignCenter);
-		volt_table->setItem(iRow, 3, numItem[j++]);
+			break;
+		case 1:
+			sprintf(buf, "%.3f", g_sysmon.maxVCCaux);
+			break;
+		case 4:
+			sprintf(buf, "%.3f", g_sysmon.maxVCCbram);
+			break;
+		}
+		if (iRow == 0 || iRow == 1 || iRow == 4)
+		{
+			numItem[j] = new QTableWidgetItem(buf);
+			numItem[j]->setFont(itemFont);
+			numItem[j]->setTextAlignment(Qt::AlignCenter);
+			volt_table->setItem(iRow, 3, numItem[j++]);
+		}
 
 		// min
-		if(iRow)
-			sprintf(buf, "%.3f", g_sysmon.minVCCaux);
-		else
+		switch (iRow)
+		{
+		case 0:
 			sprintf(buf, "%.3f", g_sysmon.minVCCint);
-
-		numItem[j] = new QTableWidgetItem(buf);
-		numItem[j]->setFont(itemFont);
-		numItem[j]->setTextAlignment(Qt::AlignCenter);
-		volt_table->setItem(iRow, 4, numItem[j++]);
+			break;
+		case 1:
+			sprintf(buf, "%.3f", g_sysmon.minVCCaux);
+			break;
+		case 4:
+			sprintf(buf, "%.3f", g_sysmon.minVCCbram);
+			break;
+		}
+		if (iRow == 0 || iRow == 1 || iRow == 4)
+		{
+			numItem[j] = new QTableWidgetItem(buf);
+			numItem[j]->setFont(itemFont);
+			numItem[j]->setTextAlignment(Qt::AlignCenter);
+			volt_table->setItem(iRow, 4, numItem[j++]);
+		}
 
 	}
 }
@@ -605,19 +701,13 @@ void fmc132p_mon::DisplayIna219Table()
 	pow_table->setItem(0, 2, numItem[j++]);
 }
 
-//if (BRD_errcmp(status, BRDerr_OK))
-//{
-//	BRDC_printf(_BRDC(" 12V - %4.3f Volt     %4.3f A     %4.3f Vatt     \n"), mon_val.voltage, mon_val.current, mon_val.power);
-//	BRDC_printf(_BRDC(" VIO_B_M2C - %4.3f Volt     VADJ - %4.3f Volt     3.3V_FMC - %4.3f Volt    1V_AVCC - %4.3f Volt \n"), mon_val.inpv[0], mon_val.inpv[1], mon_val.inpv[2], mon_val.inpv[3]);
-//	BRDC_printf(_BRDC(" 1.2V_AVTT - %4.3f Volt     0.9V - %4.3f Volt     1.2V - %4.3f Volt   2.5V - %4.3f Volt \n"), mon_val.inpv[4], mon_val.inpv[5], mon_val.inpv[6], mon_val.inpv[7]);
-//	BRDC_printf(_BRDC(" Chip Temperature: %7.3f C,    Vcc - %4.3f Volt\n"), mon_val.tint, mon_val.vcc);
-//	BRDC_printf(_BRDC(" \n"));
-//}
-//else
-//	BRDC_printf(_BRDC(" Error by reading chip0 INA219  \n"));
 void fmc132p_mon::DisplayLtc2991Table()
 {
-	QStringList ColHeaderLabels = (QStringList() << "VIO_B_M2C" << "VADJ" << "3.3V_FMC" << "1V_AVCC" << "1.2V_AVTT" << "0.9V" << "1.2V" << "2.5V");
+	QStringList ColHeaderLabels;
+	if(g_devid == 0x5523)
+		ColHeaderLabels = (QStringList() << "VIO_B_M2C" << "VADJ" << "3.3V_FMC" << "1V_AVCC" << "1.2V_AVTT" << "0.9V" << "1.2V" << "2.5V");
+	else
+		ColHeaderLabels = (QStringList() << "2.5V" << "3.3V_FMC" << "VADJ" << "1.2V" << "VIO_B_M2C" << "1.0V_AVCC" << "1.8V" << "0.95V");
 	//QStringList ColHeaderLabels = (QStringList() << "VIO" << "VADJ" << "3.3V" << "1V_" << "1.2V_" << "0.9V" << "1.2V" << "2.5V");
 	volt_132_table->setHorizontalHeaderLabels(ColHeaderLabels);
 
@@ -657,7 +747,13 @@ void fmc132p_mon::DisplayLtc2991Table()
 		this, SLOT(slotReadClient())
 	);
 
-	//QString str;
+	checkPwmEn->setDisabled(true);
+	checkPwmInv->setDisabled(true);
+	spinPwm->setDisabled(true);
+		
+	QString str_pwm;
+	str_pwm.sprintf("PWM_EN: %d|PWM_INV: %d|PWM_THRES: %d|",
+		g_pwm_en, g_pwm_inv, g_pwm_threshold);
 	//str.sprintf("Temperature: <font color=blue>%.2f°C (%.2f°C-%.2f°C)</font>|VCCint: <b>%.3fV (%.3fV-%.3fV)</b>|VCCaux: <b>%.3fV (%.3fV-%.3fV)</b>|Vrefp: <b>%.3fV</b>|Vrefn: <b>%.3fV|</b>"
 	//	"+3.3V: <b>%.3fV %.3fA %.3fW</b>|+12V: <b>%.3fV %.3fA %.3fW</b>|",
 	//	g_sysmon.curTemp, g_sysmon.minTemp, g_sysmon.maxTemp,
@@ -669,7 +765,7 @@ void fmc132p_mon::DisplayLtc2991Table()
 
 	//sendToClient(pClientSocket, "Server Response: Connected!");
 	sendToClient(pClientSocket,
-		"Server Response: Connected! " + g_brdInfo + "|"
+		"Server Response: Connected! " + g_brdInfo + "|" + str_pwm
 	);
 }
 
@@ -695,24 +791,54 @@ void fmc132p_mon::slotReadClient()
 		QTime   time;
 		in >> time >> str;
 
+		bool ok;
+		int beg_pos = str.indexOf("PWM_EN");
+		if (beg_pos != -1)
+		{
+			beg_pos = str.indexOf(":", beg_pos) + 2;
+			int end_pos = str.indexOf("|", beg_pos);
+			QString buf_text = str.mid(beg_pos, end_pos - beg_pos);
+			g_pwm_en = buf_text.toInt(&ok, 10);
+			checkPwmEn->setChecked(g_pwm_en);
+		}
+		beg_pos = str.indexOf("PWM_INV");
+		if (beg_pos != -1)
+		{
+			beg_pos = str.indexOf(":", beg_pos) + 2;
+			int end_pos = str.indexOf("|", beg_pos);
+			QString buf_text = str.mid(beg_pos, end_pos - beg_pos);
+			g_pwm_inv = buf_text.toInt(&ok, 10);
+			checkPwmInv->setChecked(g_pwm_inv);
+		}
+		beg_pos = str.indexOf("PWM_THRES");
+		if (beg_pos != -1)
+		{
+			beg_pos = str.indexOf(":", beg_pos) + 2;
+			int end_pos = str.indexOf("|", beg_pos);
+			QString buf_text = str.mid(beg_pos, end_pos - beg_pos);
+			g_pwm_threshold = buf_text.toInt(&ok, 10);
+			spinPwm->setValue(g_pwm_threshold);
+		}
+
 		//QString strMessage =
 		//	time.toString() + " " + "Client has sended - " + str;
 		//m_ptxt->append(strMessage);
 
-		//str.sprintf("%.3f°C | %.3fV | %.3fV", g_sysmon.curTemp, g_sysmon.curVCCint, g_sysmon.curVCCaux);
-		str.sprintf("Temperature: <font color=green>%.2f°C (%.2f°C-%.2f°C)</font>|VCCint: <b>%.3fV (%.3fV-%.3fV)</b>|VCCaux: <b>%.3fV (%.3fV-%.3fV)</b>|"
-			"+12V: <b>%.3fV %.3fA %.3fW</b>|", 
+		QString str_send;
+		str_send.sprintf("Temperature: <font color=green>%.2f°C (%.2f°C-%.2f°C)</font>|VCCint: <b>%.3fV (%.3fV-%.3fV)</b>|VCCaux: <b>%.3fV (%.3fV-%.3fV)</b>|"
+			"+12V: <b>%.3fV %.3fA %.3fW</b>|LTC2991: Tint <font color=green>%.2f°C</font> Vcc <b>%.3fV</b>|", 
 			g_sysmon.curTemp, g_sysmon.minTemp, g_sysmon.maxTemp,
 			g_sysmon.curVCCint, g_sysmon.minVCCint, g_sysmon.maxVCCint,
 			g_sysmon.curVCCaux, g_sysmon.minVCCaux, g_sysmon.maxVCCaux,
 			//g_sysmon.Vrefp, g_sysmon.Vrefn, 
 			//g_val3.volt, g_val3.cur, g_val3.pow,
-			g_val12.volt, g_val12.cur, g_val12.pow);
+			g_val12.volt, g_val12.cur, g_val12.pow,
+			g_temp, g_vcc);
 
 		m_nNextBlockSize = 0;
 
 		sendToClient(pClientSocket,
-			"AMB Monitor: \"" + str + "\""
+			"AMB Monitor: \"" + str_send + "\""
 		);
 	}
 }

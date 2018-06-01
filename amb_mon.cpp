@@ -18,6 +18,9 @@ typedef struct _SYSMON_PARAM
 	REAL64	curVCCaux;		// Текущее напряжение питания ПЛИС
 	REAL64	minVCCaux;		// Минимальное напряжение питания ПЛИС
 	REAL64	maxVCCaux;		// Максимальное напряжение питания ПЛИС
+	REAL64	curVCCbram;		// Текущее напряжение питания блока RAM
+	REAL64	minVCCbram;		// Минимальное питание блока RAM
+	REAL64	maxVCCbram;		// Максимальное питание блока RAM
 	REAL64	Vrefp;			// Внешнее опорное напряжение (плюс)
 	REAL64	Vrefn;			// Внешнее опорное напряжение  (минус)
 } SYSMON_PARAM, *PSYSMON_PARAM;
@@ -25,11 +28,13 @@ typedef struct _SYSMON_PARAM
 SYSMON_PARAM g_sysmon;
 U32 g_smonStatus; 
 
-
 REAL64 g_fVCCintNominal = 0.0;	// Номинал питания ядра
 REAL64 g_fVCCauxNominal = 0.0;	// Номинал питания ПЛИС
 REAL64 g_fVrefpNominal = 0.0;	// Номинал внешнего опорного напряжения (плюс)
 REAL64 g_fVrefnNominal = 0.0;	// Номинал внешнего опорного напряжения (минус)
+REAL64 g_fVCCbramNominal = 0.0;	// Номинал питания блока RAM
+
+U08 g_isVCCbram = 1;	// 0 - нет напряжения питания блока RAM
 
 static BRD_Handle g_hDevice;
 static BRD_Handle g_hSysMon;
@@ -148,8 +153,21 @@ amb_mon::amb_mon(QWidget *parent)
 		QMessageBox::about(this, "System Monitor", "<font color=red>Service SYSMON not capture!</font>");
 		return;
 	}
-	BRD_VoltNominals voltNominals;
-	BRD_ctrl(g_hSysMon, 0, BRDctrl_SYSMON_GETVNOMINALS, &voltNominals);
+
+	BRD_VoltNominals7s voltNominals;
+	S32	err = BRD_ctrl(g_hSysMon, 0, BRDctrl_SYSMON_GETVN7S, &voltNominals);
+	if (BRD_errcmp(err, BRDerr_OK))
+	{
+		g_fVCCbramNominal = voltNominals.vccbram;
+	}
+	else
+	{
+		BRD_ctrl(g_hSysMon, 0, BRDctrl_SYSMON_GETVNOMINALS, &voltNominals);
+		g_isVCCbram = 0;
+	}
+
+	//BRD_VoltNominals voltNominals;
+	//BRD_ctrl(g_hSysMon, 0, BRDctrl_SYSMON_GETVNOMINALS, &voltNominals);
 	g_fVCCintNominal = voltNominals.vccint;
 	g_fVCCauxNominal = voltNominals.vccaux;
 	g_fVrefpNominal = voltNominals.vrefp;
@@ -443,6 +461,14 @@ void amb_mon::getValSysMon()
 		/*strInfo.sprintf("Vrefn: <b>%.3f V</b>", val);
 		labelVRefn->setText(strInfo);*/
 	}
+	//Снятие значения Vccint
+	if (g_isVCCbram)
+	{
+		BRD_ctrl(g_hSysMon, 0, BRDctrl_SYSMON_GETVCCBRAM, &sysmon_data);
+		g_sysmon.curVCCbram = sysmon_data.curv;
+		g_sysmon.maxVCCbram = sysmon_data.maxv;
+		g_sysmon.minVCCbram = sysmon_data.minv;
+	}
 }
 
 void amb_mon::DisplayVoltTable()
@@ -454,17 +480,17 @@ void amb_mon::DisplayVoltTable()
 //	volt_table->setColumnWidth(1, 50);
 //	volt_table->setColumnWidth(2, 50);
 //	volt_table->setColumnWidth(3, 50);
-	QStringList RowHeaderLabels = (QStringList() << "VCCint" << "VCCaux" << "Vrefp" << "Vrefn");
+	QStringList RowHeaderLabels = (QStringList() << "VCCint" << "VCCaux" << "Vrefp" << "Vrefn" << "VCCbram");
 	volt_table->setVerticalHeaderLabels(RowHeaderLabels);
 	QStringList ColHeaderLabels = (QStringList() << "Current, V" << "Error, %" << "Nominal, V" << "Maximum, V" << "Minimum, V");
 	volt_table->setHorizontalHeaderLabels(ColHeaderLabels);
 
 	char buf[64];
 	int j = 0;
-	QTableWidgetItem *numItem[4*4];
+	QTableWidgetItem *numItem[5*5];
 	QBrush itemBrushGreen(Qt::darkGreen);
 	QBrush itemBrushRed(Qt::red);
-	for(int iRow = 0; iRow < 4; iRow++)
+	for(int iRow = 0; iRow < 5; iRow++)
 	{
 		//volt_table->insertRow(iRow);
 		//volt_table->setRowHeight(iRow, 20);
@@ -483,6 +509,12 @@ void amb_mon::DisplayVoltTable()
 			break;
 		case 3:
 			sprintf(buf, "%.3f", g_sysmon.Vrefn);
+			break;
+		case 4:
+			if(g_isVCCbram)
+				sprintf(buf, "%.3f", g_sysmon.curVCCbram);
+			else
+				sprintf(buf, "None");
 			break;
 		}
 		numItem[j] = new QTableWidgetItem(buf);
@@ -524,6 +556,12 @@ void amb_mon::DisplayVoltTable()
 			else
 				fl_disp = 0;
 			break;
+		case 4:
+			if (g_isVCCbram && g_fVCCbramNominal)
+				err = fabs(g_sysmon.curVCCint - g_fVCCbramNominal) / g_fVCCbramNominal * 100.;
+			else
+				fl_disp = 0;
+			break;
 		}
 		if(fl_disp)
 		{
@@ -551,6 +589,9 @@ void amb_mon::DisplayVoltTable()
 		case 3:
 			sprintf(buf, "%.3f", g_fVrefnNominal);
 			break;
+		case 4:
+			sprintf(buf, "%.3f", g_fVCCbramNominal);
+			break;
 		}
 		numItem[j] = new QTableWidgetItem(buf);
 		numItem[j]->setFont(itemFont);
@@ -558,11 +599,19 @@ void amb_mon::DisplayVoltTable()
 		volt_table->setItem(iRow, 2, numItem[j++]);
 
 		// max 
-		if(iRow == 0)
+		switch (iRow)
+		{
+		case 0:
 			sprintf(buf, "%.3f", g_sysmon.maxVCCint);
-		else
+			break;
+		case 1:
 			sprintf(buf, "%.3f", g_sysmon.maxVCCaux);
-		if(iRow == 0 || iRow == 1)
+			break;
+		case 4:
+			sprintf(buf, "%.3f", g_sysmon.maxVCCbram);
+			break;
+		}
+		if(iRow == 0 || iRow == 1 || iRow == 4)
 		{
 			numItem[j] = new QTableWidgetItem(buf);
 			numItem[j]->setFont(itemFont);
@@ -571,11 +620,19 @@ void amb_mon::DisplayVoltTable()
 		}
 
 		// min
-		if(iRow == 0)
+		switch (iRow)
+		{
+		case 0:
 			sprintf(buf, "%.3f", g_sysmon.minVCCint);
-		else
+			break;
+		case 1:
 			sprintf(buf, "%.3f", g_sysmon.minVCCaux);
-		if(iRow == 0 || iRow == 1)
+			break;
+		case 4:
+			sprintf(buf, "%.3f", g_sysmon.minVCCbram);
+			break;
+		}
+		if (iRow == 0 || iRow == 1 || iRow == 4)
 		{
 			numItem[j] = new QTableWidgetItem(buf);
 			numItem[j]->setFont(itemFont);

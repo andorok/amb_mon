@@ -34,6 +34,10 @@ int main(int argc, char *argv[])
 {
     //Q_INIT_RESOURCE(amb_mon);
 	//Q_INIT_RESOURCE(fmc132p_mon);
+	QStringList paths = QCoreApplication::libraryPaths();
+	paths.append(".");
+	//paths.append("./plugins");
+	QCoreApplication::setLibraryPaths(paths);
 
 	QApplication a(argc, argv);
 
@@ -50,7 +54,8 @@ int main(int argc, char *argv[])
 
 	U16 deviceID = Dev_init();
 
-	if (deviceID == 0x5523) //FMC132P
+	if (deviceID == 0x5522 || // FMC126P
+		deviceID == 0x5523) // FMC132P
 	{
 		fmc132p_w = new fmc132p_mon;
 		fmc132p_w->show();
@@ -62,7 +67,8 @@ int main(int argc, char *argv[])
 	}
 	int ret = a.exec();
 
-	if (deviceID == 0x5523) //FMC132P
+	if (deviceID == 0x5522 || // FMC126P
+		deviceID == 0x5523) // FMC132P
 	{
 		delete fmc132p_w;
 	}
