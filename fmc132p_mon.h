@@ -14,7 +14,7 @@ class fmc132p_mon : public QDialog, public Ui::fmc132p_monClass
 	Q_OBJECT
 
 public:
-	fmc132p_mon(QWidget *parent = 0);
+	fmc132p_mon(int& isValid, QWidget *parent = 0);
 	~fmc132p_mon();
 	void timerEvent(QTimerEvent *event);
 	void setVisible(bool visible); // for tray

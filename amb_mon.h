@@ -14,7 +14,7 @@ class amb_mon : public QDialog, public Ui::amb_monClass
 	Q_OBJECT
 
 public:
-	amb_mon(QWidget *parent = 0);
+	amb_mon(int& isValid, QWidget *parent = 0);
 	~amb_mon();
 	void timerEvent(QTimerEvent *event);
 	void setVisible(bool visible); // for tray

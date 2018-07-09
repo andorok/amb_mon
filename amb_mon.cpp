@@ -53,7 +53,7 @@ QString g_brdInfo;
 
 U16 g_devid;
 
-amb_mon::amb_mon(QWidget *parent)
+amb_mon::amb_mon(int& isValid, QWidget *parent)
 	: QDialog(parent)
 {
 	//QTextCodec::setCodecForCStrings(QTextCodec::codecForName("CP1251"));
@@ -259,6 +259,8 @@ amb_mon::amb_mon(QWidget *parent)
 	minimizeAction->setEnabled(true);
 	restoreAction->setEnabled(false);
 	trayIcon->show();
+
+	isValid = 1; // конструктор выполнился без ошибок
 }
 
 void amb_mon::setVisible(bool visible)

@@ -59,7 +59,7 @@ static QString g_brdInfo;
 
 static U16 g_devid;
 
-fmc132p_mon::fmc132p_mon(QWidget *parent)
+fmc132p_mon::fmc132p_mon(int& isValid, QWidget *parent)
 	: QDialog(parent)
 {
 	//QTextCodec::setCodecForCStrings(QTextCodec::codecForName("CP1251"));
@@ -141,8 +141,8 @@ fmc132p_mon::fmc132p_mon(QWidget *parent)
 	status = BRD_serviceList(g_hDevice, 0, NULL, 0, &ItemReal);
 	PBRD_ServList pSrvList = new BRD_ServList[ItemReal];
 	status = BRD_serviceList(g_hDevice, 0, pSrvList, ItemReal, &ItemReal);
-	U32 mode = BRDcapt_EXCLUSIVE;
-	//U32 mode = BRDcapt_SHARED;
+	//U32 mode = BRDcapt_EXCLUSIVE;
+	U32 mode = BRDcapt_SHARED;
 	g_hSysMon = 0;
 	for(U32 iSrv = 0; iSrv < ItemReal; iSrv++)
 	{
@@ -161,25 +161,27 @@ fmc132p_mon::fmc132p_mon(QWidget *parent)
 		QMessageBox::about(this, "System Monitor", "<font color=red>Service SYSMON not capture!</font>");
 		//return;
 	}
-
-	BRD_VoltNominals7s voltNominals;
-	S32	err = BRD_ctrl(g_hSysMon, 0, BRDctrl_SYSMON_GETVN7S, &voltNominals);
-	if (BRD_errcmp(err, BRDerr_OK))
-	{
-		g_fVCCbramNominal = voltNominals.vccbram;
-	}
 	else
 	{
-		BRD_ctrl(g_hSysMon, 0, BRDctrl_SYSMON_GETVNOMINALS, &voltNominals);
-		g_isVCCbram = 0;
-	}
+		BRD_VoltNominals7s voltNominals;
+		S32	err = BRD_ctrl(g_hSysMon, 0, BRDctrl_SYSMON_GETVN7S, &voltNominals);
+		if (BRD_errcmp(err, BRDerr_OK))
+		{
+			g_fVCCbramNominal = voltNominals.vccbram;
+		}
+		else
+		{
+			BRD_ctrl(g_hSysMon, 0, BRDctrl_SYSMON_GETVNOMINALS, &voltNominals);
+			g_isVCCbram = 0;
+		}
 
-	//BRD_VoltNominals voltNominals;
-	//BRD_ctrl(g_hSysMon, 0, BRDctrl_SYSMON_GETVNOMINALS, &voltNominals);
-	g_fVCCintNominal = voltNominals.vccint;
-	g_fVCCauxNominal = voltNominals.vccaux;
-	g_fVrefpNominal = voltNominals.vrefp;
-	g_fVrefnNominal = voltNominals.vrefn;
+		//BRD_VoltNominals voltNominals;
+		//BRD_ctrl(g_hSysMon, 0, BRDctrl_SYSMON_GETVNOMINALS, &voltNominals);
+		g_fVCCintNominal = voltNominals.vccint;
+		g_fVCCauxNominal = voltNominals.vccaux;
+		g_fVrefpNominal = voltNominals.vrefp;
+		g_fVrefnNominal = voltNominals.vrefn;
+	}
 
 	g_pwm_en = false;
 	g_pwm_inv = false;
@@ -197,7 +199,7 @@ fmc132p_mon::fmc132p_mon(QWidget *parent)
 	labelCurTemp->setToolTip("Текущая температура кристалла");
 	labelMinTemp->setToolTip("Минимальная температура кристалла");
 	labelMaxTemp->setToolTip("Максимальная температура кристалла");
-
+	
 	// реализация сворачивания в Tray
 	minimizeAction = new QAction(tr("Mi&nimize"), this);
     connect(minimizeAction, SIGNAL(triggered()), this, SLOT(hide()));
@@ -242,11 +244,12 @@ fmc132p_mon::fmc132p_mon(QWidget *parent)
 	restoreAction->setEnabled(false);
 	trayIcon->show(); // показываем иконку приложения в Tray
 
+	isValid = 1; // конструктор выполнился без ошибок
 }
 
 void fmc132p_mon::setVisible(bool visible)
 {
-	if(g_hSysMon)
+	//if(g_hSysMon)
 	{
 	    minimizeAction->setEnabled(visible);
 		restoreAction->setEnabled(!visible);

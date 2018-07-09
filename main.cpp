@@ -51,21 +51,33 @@ int main(int argc, char *argv[])
 
 	fmc132p_mon* fmc132p_w;
 	amb_mon* w;
+	int isValid = 0; // 1 = конструктор выполнился без ошибок
 
 	U16 deviceID = Dev_init();
+
+	//U16 deviceID = 0x5522;
+	//isValid = 1;
+
+	if (deviceID == 0) // non devices
+		return -1;
+
 
 	if (deviceID == 0x5522 || // FMC126P
 		deviceID == 0x5523) // FMC132P
 	{
-		fmc132p_w = new fmc132p_mon;
-		fmc132p_w->show();
+		fmc132p_w = new fmc132p_mon(isValid);
+		if(isValid)
+			fmc132p_w->show();
 	}
 	else
 	{
-		w = new amb_mon;
-		w->show();
+		w = new amb_mon(isValid);
+		if (isValid)
+			w->show();
 	}
-	int ret = a.exec();
+	int ret = -1;
+	if (isValid)
+		ret = a.exec();
 
 	if (deviceID == 0x5522 || // FMC126P
 		deviceID == 0x5523) // FMC132P
