@@ -62,8 +62,10 @@ int main(int argc, char *argv[])
 		return -1;
 
 
-	if (deviceID == 0x5522 || // FMC126P
-		deviceID == 0x5523) // FMC132P
+	if (deviceID == 0x5522 ||	// FMC126P
+		deviceID == 0x5523	||	// FMC132P
+		deviceID == 0x5525	||	// FMC133V
+		deviceID == 0x5526)		// DSP134V
 	{
 		fmc132p_w = new fmc132p_mon(isValid);
 		if(isValid)
@@ -80,7 +82,9 @@ int main(int argc, char *argv[])
 		ret = a.exec();
 
 	if (deviceID == 0x5522 || // FMC126P
-		deviceID == 0x5523) // FMC132P
+		deviceID == 0x5523 ||	// FMC132P
+		deviceID == 0x5525 ||	// FMC133V
+		deviceID == 0x5526)		// DSP134V
 	{
 		delete fmc132p_w;
 	}

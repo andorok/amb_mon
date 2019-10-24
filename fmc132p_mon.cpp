@@ -136,6 +136,10 @@ fmc132p_mon::fmc132p_mon(int& isValid, QWidget *parent)
 
 	if (g_devid == 0x5522) // FMC126P
 		this->setWindowTitle("FMC126P Sensors Monitor");
+	if (g_devid == 0x5525) // FMC133V
+		this->setWindowTitle("FMC133V Sensors Monitor");
+	if (g_devid == 0x5526) // DSP134V
+		this->setWindowTitle("DSP134V Sensors Monitor");
 
 	U32 ItemReal;
 	status = BRD_serviceList(g_hDevice, 0, NULL, 0, &ItemReal);
@@ -707,10 +711,24 @@ void fmc132p_mon::DisplayIna219Table()
 void fmc132p_mon::DisplayLtc2991Table()
 {
 	QStringList ColHeaderLabels;
-	if(g_devid == 0x5523)
-		ColHeaderLabels = (QStringList() << "VIO_B_M2C" << "VADJ" << "3.3V_FMC" << "1V_AVCC" << "1.2V_AVTT" << "0.9V" << "1.2V" << "2.5V");
-	else
+	switch (g_devid)	{
+	case	0x5522:		// FMC126P
 		ColHeaderLabels = (QStringList() << "2.5V" << "3.3V_FMC" << "VADJ" << "1.2V" << "VIO_B_M2C" << "1.0V_AVCC" << "1.8V" << "0.95V");
+		break;
+	case 	0x5523:		// FMC132P
+		ColHeaderLabels = (QStringList() << "VIO_B_M2C" << "VADJ" << "3.3V_FMC" << "1V_AVCC" << "1.2V_AVTT" << "0.9V" << "1.2V" << "2.5V");
+		break;
+	case 	0x5525:		// FMC133V
+		ColHeaderLabels = (QStringList() << "1.2V" << "0.9V_AVCC" << "0.85V" << "VADJ" << "3.3V" << "1.8V" << "VIO_B_M2C" << "2.5V");
+		break;
+	case 	0x5526:		// DSP134V
+		ColHeaderLabels = (QStringList() << "0.85V" << "0.9V_AVCC" << "1.2V" << "1.8V" << "---" << "3.3V" << "---" << "2.5V");
+		break;
+	}
+//	if(g_devid == 0x5523) // FMC132P
+//		ColHeaderLabels = (QStringList() << "VIO_B_M2C" << "VADJ" << "3.3V_FMC" << "1V_AVCC" << "1.2V_AVTT" << "0.9V" << "1.2V" << "2.5V");
+//	else
+//		ColHeaderLabels = (QStringList() << "2.5V" << "3.3V_FMC" << "VADJ" << "1.2V" << "VIO_B_M2C" << "1.0V_AVCC" << "1.8V" << "0.95V");
 	//QStringList ColHeaderLabels = (QStringList() << "VIO" << "VADJ" << "3.3V" << "1V_" << "1.2V_" << "0.9V" << "1.2V" << "2.5V");
 	volt_132_table->setHorizontalHeaderLabels(ColHeaderLabels);
 
